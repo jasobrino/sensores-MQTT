@@ -1,0 +1,12 @@
+solucion a la conexión a internet a traves del router en wlan1 con RaspAP en wlan0:
+
+
+When using a second wifi interface as a bridge (wlan1) the problem is that the metric for the route for wlan1 is higher than the one for wlan0. Adding a higher metric for wlan0 solves the problem:
+edit /etc/dhcpcd.conf and add under:
+interface wlan0
+metric 999
+
+eth0 works fine because when plugged it has a lower metric.
+
+Best solution would be not to add the default route 0.0.0.0 for wlan0 when used in AP mode.
+LockonS reacted with thumbs up emoji
