@@ -8,11 +8,15 @@
 
 #define reyaxRX GPIO_NUM_16 //uart2 esp32
 #define reyaxTX GPIO_NUM_17 
-#define reyax_RST GPIO_NUM_4 //4 // pin reset del reyax
+#define reyax_RST GPIO_NUM_4 // pin reset del reyax
 #define reyaxIRP 115200  //57600 //vellocidad en baudios
 
 Adafruit_SSD1306 display = Adafruit_SSD1306(128, 32, &Wire, -1);
-HardwareSerial lora(2); //definición módulo en serial2
+//definición módulo en serial2
+HardwareSerial lora(2);
+bool loraReceivedOk = false;
+String loraReceivedString = "";
+
 char message[260];
 struct st_msg {
   uint16_t tr_addr;
@@ -26,17 +30,17 @@ uint16_t counter = 0;
 char literal[]="+RCV=100,4,0123,-5,12";
 void show_lcd();
 void load_msg(char *ms);
-String lora_send_command(char const *command);
+void lora_send(String message);
+void lora_receive_callback();
 bool lora_send_cpin();
+void lora_send_data();
 
 void setup() {
-  // descativamos el reset
-/*   pinMode(reyax_RST, OUTPUT);
-  digitalWrite(reyax_RST, HIGH); */
   //ESP32 - desactiva brownout detector
   WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, 0); 
   //para desactivar el pin de reset de reyax
   gpio_set_pull_mode(reyax_RST, GPIO_PULLUP_ONLY);
+  gpio_sleep_set_pull_mode(reyax_RST, GPIO_PULLUP_ONLY);
 
   Serial.begin(115200);
   // load_msg(literal);
@@ -52,37 +56,98 @@ void setup() {
   }
   Serial.println("iniciado uart2: ");
   lora.setRxBufferSize(256);
+  lora.onReceive(lora_receive_callback);
   lora.begin(reyaxIRP, SERIAL_8N1, reyaxRX, reyaxTX);
-  // lora.begin(reyaxIRP, SERIAL_8N1);
   if(lora_send_cpin()) {
     Serial.println("CPIN enviado correctamente a modulo lora.");
   }
- 
-  // send_command("AT+CPIN=11223344\r\n");
-  // send_command( "AT+CPIN?\r\n");
-  // send_command( "AT+ADDRESS?\r\n");
   Serial.println("Entrando en loop...");
 }
 
 void loop() {
-  while(lora.available() > 0) {
+  // nuevo mensaje recibido
+  if(loraReceivedOk) {
     counter++;
-    uint16_t numbytes = lora.readBytesUntil(10, message, sizeof(message));
+    loraReceivedOk = false;
+    uint16_t numbytes = loraReceivedString.length();
     //uint16_t numbytes = lora.readBytes(message, 260);
     // los mensajes terminan con CR+LF, terminamos la cadena eliminando el caracter final
-    message[numbytes - 1] = 0;
-    Serial.printf("recibido: %06u - %u: [%s]\n", counter,numbytes, message);
+    // message[numbytes - 1] = 0;
+    strncpy(message, loraReceivedString.c_str(), sizeof(message));
+    Serial.printf("recibido: %06u - %u: [%s]\n", counter, numbytes, message);
     // comprobamos que el mensaje recibido no es un error
-    if( strncmp("+RCV", message, 4) == 0) {
+    if( loraReceivedString.startsWith("+RCV") ) {
       load_msg(message); 
     } else {
-      strcpy( msg.payload, message);
+      strcpy( msg.payload,message);
     }
     show_lcd();
-  } 
+  }
 }
 
 // envio de comandos a modulo lora
+void lora_receive_callback() {
+  size_t available = lora.available();
+  loraReceivedString = lora.readString();
+  Serial.printf("lora received (%u):%s\n", available, loraReceivedString.c_str());
+  loraReceivedOk = true;
+}
+
+void lora_send(String message) {
+  Serial.printf("lora_send:%s\n", message.c_str());
+  lora.println(message.c_str());
+  while(!loraReceivedOk){delay(1);}
+  loraReceivedOk = false;
+}
+// enviar codigo cpin a modulo lora
+bool lora_send_cpin() {
+  char str_cpin[20] = {0};
+  strcpy(str_cpin,"AT+CPIN=");
+  strcat(str_cpin, LORA_CPIN);
+  lora_send(str_cpin);
+  if ( !loraReceivedString.startsWith("+") ) {
+    Serial.println("lora_send_command: error");
+    return false;
+  } 
+  return true;
+}
+
+// capturamos los valores del string
+// +RCV=100,4,0123,-5,12
+void load_msg(char *ms) {
+  char * strPos;
+  strPos = strtok(ms, "="); //saltamos el signo =
+  strPos = strtok(NULL, ",");
+  msg.tr_addr = atoi(strPos);
+  strPos = strtok(NULL, ",");
+  msg.payload_len = atoi(strPos);
+  strPos = strtok(NULL, ",");
+  strcpy(msg.payload, strPos);
+  strPos = strtok(NULL, ",");
+  msg.rssi = atoi(strPos);
+  strPos = strtok(NULL, ",");
+  msg.snr = atoi(strPos);
+  Serial.printf("addr: %u, len:%u, msg:%s, rssi: %d, snr: %d\n",
+          msg.tr_addr,msg.payload_len,msg.payload,msg.rssi,msg.snr);
+
+}
+
+//mostrar información en el lcd
+void show_lcd() {
+  display.clearDisplay();
+  display.setTextSize(1);
+  display.setTextColor(WHITE);
+  display.setCursor(0,0);
+  display.printf("%s",msg.payload);
+  display.setCursor(0,10);
+  //display.printf("rssi:%d snr:%d", msg.rssi, msg.snr);
+  display.setCursor(0,20);
+  display.printf("cnt:%6d", counter);
+  // display.printf("lp:%07u V:%.2f");
+  display.display();
+}
+
+/* // envio de comandos a modulo lora
 String lora_send_command(char const *command) {
   String loraResponse;
   if(lora.available() > 0) {
@@ -122,38 +187,4 @@ bool lora_send_cpin() {
   display.display();
   return true;
 }
-
-// capturamos los valores del string
-// +RCV=100,4,0123,-5,12
-void load_msg(char *ms) {
-  char * strPos;
-  strPos = strtok(ms, "="); //saltamos el signo =
-  strPos = strtok(NULL, ",");
-  msg.tr_addr = atoi(strPos);
-  strPos = strtok(NULL, ",");
-  msg.payload_len = atoi(strPos);
-  strPos = strtok(NULL, ",");
-  strcpy(msg.payload, strPos);
-  strPos = strtok(NULL, ",");
-  msg.rssi = atoi(strPos);
-  strPos = strtok(NULL, ",");
-  msg.snr = atoi(strPos);
-  Serial.printf("addr: %u, len:%u, msg:%s, rssi: %d, snr: %d\n",
-          msg.tr_addr,msg.payload_len,msg.payload,msg.rssi,msg.snr);
-
-}
-
-//mostrar información en el lcd
-void show_lcd() {
-  display.clearDisplay();
-  display.setTextSize(1);
-  display.setTextColor(WHITE);
-  display.setCursor(0,0);
-  display.printf("%s",msg.payload);
-  display.setCursor(0,10);
-  //display.printf("rssi:%d snr:%d", msg.rssi, msg.snr);
-  display.setCursor(0,20);
-  display.printf("cnt:%6d", counter);
-  // display.printf("lp:%07u V:%.2f");
-  display.display();
-}
+ */

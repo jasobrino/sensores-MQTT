@@ -28,6 +28,9 @@
 
 //definición módulo en serial2
 HardwareSerial lora(2);
+bool loraReceivedOk = false;
+String loraReceivedString = "";
+
 // dispositivos I2C
 Adafruit_SGP30 sgp;
 Adafruit_SSD1306 display = Adafruit_SSD1306(128, 32, &Wire, OLED_RESET);
@@ -70,7 +73,8 @@ void save_config();
 void Wifi_control();
 void wmSaveConfigCallback();
 void sendMqtt();
-String lora_send_command(char const *command);
+void lora_send(String message);
+void lora_receive_callback();
 bool lora_send_cpin();
 void lora_send_data();
 
@@ -79,8 +83,8 @@ void setup()
   lastTime = millis();
   Serial.begin(115200);
   Serial.println("\n-----------------------------------------------");
+  Serial.flush();
   // pinMode(PIN_LED, OUTPUT);
-
   //para desactivar el pin de reset de reyax
   gpio_set_pull_mode(reyax_RST, GPIO_PULLUP_ONLY);
   gpio_sleep_set_pull_mode(reyax_RST, GPIO_PULLUP_ONLY);
@@ -88,22 +92,20 @@ void setup()
   WiFi.mode(WIFI_OFF);    // Switch WiFi off
   //WiFi.setSleep(true); 
   // if(esp_wifi_stop() == ESP_OK) Serial.println("wifi_stop ok");
+  // WiFi.mode(WIFI_STA); //modo station por defecto 
 
   //ESP32 - desactiva brownout detector
   WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, 0); 
-  // WiFi.mode(WIFI_STA); //modo station por defecto 
-  //bajamos la frecuencia de la cpu (problemas con lora)
-/*   bool changeFreq = setCpuFrequencyMhz(160); //80
+  //bajamos la frecuencia de la cpu (por defecto 240Mhz)
+  bool changeFreq = setCpuFrequencyMhz(80);
   delay(50);
   if(changeFreq) {
     Serial.printf("\nfreq actual   CPU: %u\n", getCpuFrequencyMhz());
   } else Serial.println("error en setCpuFrecuencyMhz()");
- */
+
   //capturamos la configuración guardada en LittleFS
   get_config(); 
-
   //configuración del tiempo de sleep
-  esp_sleep_enable_timer_wakeup(config.SEC_SLEEP * uS_TO_S_FACTOR);
   // iniciando dispositivos y sensores
   if(display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
     display.clearDisplay();
@@ -125,13 +127,14 @@ void setup()
   }
   // modulo lora
   lora.setTxBufferSize(256);
+  lora.onReceive(lora_receive_callback);
   lora.begin(reyaxIRP, SERIAL_8N1, reyaxRX, reyaxTX);
   if(lcd_inst) {
       display.println("** INIC MOD LORA **");
       display.display();
   }
-  String resp = lora_send_command("AT");
-  if( resp.startsWith("+OK") || resp.startsWith("+MODE=0")) {
+  lora_send("AT");
+  if( loraReceivedString.startsWith("+OK") || loraReceivedString.startsWith("+MODE=0")) {
     Serial.println("modulo lora iniciado correctamente");
     if(lcd_inst) {
       display.println("** MOD LORA OK **");
@@ -145,7 +148,7 @@ void setup()
     }
     while(true) { delay(10); }
   }
-  lora_send_command("AT+MODE=1"); // modo sleep de lora
+  lora_send("AT+MODE=1"); // modo sleep de lora
   
   //sensor BME280
   if(!bme.begin(BME_ADDR)) {
@@ -248,17 +251,18 @@ void setup()
   // if(esp_wifi_start() == ESP_OK) Serial.println("wifi restablecido");
   //Wifi_control();
   Serial.printf("Tiempo conexión wifi: %u ms\n", millis() - lastTime);
-  lora_send_command("AT+MODE=0"); // modo transceiver lora
+  lora_send("AT+MODE=0"); // modo transceiver lora
   lora_send_cpin();
   lora_send_data(); //no usamos wifi
-  lora_send_command("AT+MODE=1"); // modo sleep de lora
+  lora_send("AT+MODE=1"); // modo sleep de lora
+  lora.flush();
   if(lcd_inst) display.ssd1306_command(SSD1306_DISPLAYOFF); //apagar lcd
   // delay(5000); //para medir consumo
   // pasamos a modo deep sleep
   Serial.println("**** deep_sleep ****\n");
   Serial.flush();
   delay(20);
-  // gpio_deep_sleep_hold_en();
+  esp_sleep_enable_timer_wakeup(config.SEC_SLEEP * uS_TO_S_FACTOR);
   esp_deep_sleep_start();
 } 
 
@@ -394,37 +398,26 @@ float read_vin() {
   return ADCv;
 }
 // envio de comandos a modulo lora
-String lora_send_command(char const *command) {
-  String loraResponse;
-  if(lora.available() > 0) {
-    Serial.printf("datos en buffer recepción: %s\n", lora.readString());
-  }
-  Serial.printf("command: %s\n", command);
-  size_t nbytes = lora.write(command);
-  lora.write("\r\n");
-  uint64_t lastMillis = millis();
-  while(!lora.available()) {
-    delay(1);
-    if(millis() - lastMillis > 10000) {
-      Serial.println("lora_send_command: error en modulo lora");
-      return String("ERR");
-    }
-  }
-  while(lora.available() > 0) {
-    loraResponse = lora.readString();
-    Serial.printf("resp: %s\n", loraResponse.c_str());
-  }
-  lora.flush();
-  Serial.printf("bytes enviados: %u\n", nbytes);
-  return loraResponse;
+void lora_receive_callback() {
+  size_t available = lora.available();
+  loraReceivedString = lora.readString();
+  Serial.printf("lora received (%u):%s\n", available, loraReceivedString.c_str());
+  loraReceivedOk = true;
+}
+
+void lora_send(String message) {
+  Serial.printf("lora_send:%s\n", message.c_str());
+  lora.println(message.c_str());
+  while(!loraReceivedOk){delay(1);}
+  loraReceivedOk = false;
 }
 // enviar codigo cpin a modulo lora
 bool lora_send_cpin() {
   char str_cpin[20] = {0};
   strcpy(str_cpin,"AT+CPIN=");
   strcat(str_cpin, LORA_CPIN);
-  String loraResponse = lora_send_command(str_cpin);
-  if ( !loraResponse.startsWith("+") ) {
+  lora_send(str_cpin);
+  if ( !loraReceivedString.startsWith("+") ) {
     Serial.println("lora_send_command: error");
     return false;
   } 
@@ -461,13 +454,13 @@ void lora_send_data() {
   snprintf(buffer,  sizeof(buffer), ",VB%s", str_vbat);
   payload.concat(buffer);
   payload.replace(" ",""); //quitamos los espacios
-  payload.replace(",",":");
+  //payload.replace(",",":");
   uint16_t payload_length = payload.length();
   snprintf(buffer, sizeof(buffer), "%u,", payload_length);
   lora_msg.concat(buffer);
   lora_msg.concat(payload);
   lora_msg.replace(" ","");
-  lora_send_command(lora_msg.c_str());
+  lora_send(lora_msg.c_str());
 }
 
 // envio de datos al broker MQTT

@@ -13,9 +13,9 @@
 HardwareSerial lora(2);
 bool receivedOk = false;
 String receivedString = "";
-String lora_send_data(char const *data);
-void hibernate();
+void lora_send(String message);
 void receiveCallback();
+void hibernate();
 
 void setup() {
   WiFi.disconnect(true);  // Disconnect from the network
@@ -26,19 +26,21 @@ void setup() {
   gpio_sleep_set_pull_mode(reyax_RST, GPIO_PULLUP_ONLY);
   //ESP32 - desactiva brownout detector
   WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, 0); 
+
   Serial.begin(115200);
+  bool changeFreq = setCpuFrequencyMhz(80); //80
+  delay(50);
+  if(changeFreq) {
+    Serial.printf("\nfreq actual   CPU: %u\n", getCpuFrequencyMhz());
+  } else Serial.println("error en setCpuFrecuencyMhz()");
+
   lora.setTxBufferSize(256);
   lora.onReceive(receiveCallback);
   lora.begin(reyaxIRP, SERIAL_8N1, reyaxRX, reyaxTX);
-  lora.println("AT");
-  while(!receivedOk){delay(1);}
-  receivedOk = false;
-  Serial.printf("enviado AT a lora \n");
-  lora.println("AT+SEND=1,98,The switch between receiving mode and sleep mode can be used to achieve the effect of power saving");
-  while(!receivedOk){delay(1);}
-  receivedOk = false;
-  lora.println("AT+MODE=1"); // lora sleep
-  while(!receivedOk){delay(1);}
+  lora_send("AT");
+  // lora_send("AT+SEND=1,98,The switch between receiving mode and sleep mode can be used to achieve the effect of power saving");
+  lora_send("AT+SEND=1,239,You should also read all available bytes into a buffer, then write them back out, rather doing an availability check, one byte read, one byte write, and then again in the other direction. This will vastly reduce the time it takes to handle");
+  lora_send("AT+MODE=1"); // lora sleep
   lora.flush();
 
   Serial.println("** deep sleep **");
@@ -61,7 +63,15 @@ void setup() {
 void receiveCallback() {
   size_t available = lora.available();
   receivedString = lora.readString();
+  Serial.printf("lora received (%u):%s\n", available, receivedString.c_str());
   receivedOk = true;
+}
+
+void lora_send(String message) {
+  Serial.printf("lora_send:%s\n", message.c_str());
+  lora.println(message.c_str());
+  while(!receivedOk){delay(1);}
+  receivedOk = false;
 }
 
 void hibernate() {
@@ -72,7 +82,7 @@ void hibernate() {
     esp_deep_sleep_start();
 }
 
-
+/* 
 String lora_send_data(char const *data) {
   String response;
   Serial.printf("command: %s - ", data);
@@ -92,7 +102,7 @@ String lora_send_data(char const *data) {
   }
   lora.flush();
   return response;
-}
+} */
 
 void loop() {}
 
