@@ -2,5 +2,5 @@
     "ID": "STA-004",
     "MQTT_HOST": "barebone",
     "MQTT_PORT": "1883",
-    "SEC_SLEEP": 240
+    "SEC_SLEEP": 20
 }

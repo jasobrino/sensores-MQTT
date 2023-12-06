@@ -8,11 +8,11 @@
         {
             "name": "PlatformIO",
             "includePath": [
-                "c:/Users/usuario/Nextcloud/PlatformIO/Projects/esp32/reyax RYRL988/include",
-                "c:/Users/usuario/Nextcloud/PlatformIO/Projects/esp32/reyax RYRL988/src",
-                "c:/Users/usuario/Nextcloud/PlatformIO/Projects/esp32/reyax RYRL988/.pio/libdeps/esp32dev/Adafruit SSD1306",
-                "c:/Users/usuario/Nextcloud/PlatformIO/Projects/esp32/reyax RYRL988/.pio/libdeps/esp32dev/Adafruit GFX Library",
-                "c:/Users/usuario/Nextcloud/PlatformIO/Projects/esp32/reyax RYRL988/.pio/libdeps/esp32dev/Adafruit BusIO",
+                "c:/Users/usuario/Nextcloud/PlatformIO/Projects/sensores MQTT/receptor RYRL988/include",
+                "c:/Users/usuario/Nextcloud/PlatformIO/Projects/sensores MQTT/receptor RYRL988/src",
+                "c:/Users/usuario/Nextcloud/PlatformIO/Projects/sensores MQTT/receptor RYRL988/.pio/libdeps/sensoresMQTT/Adafruit SSD1306",
+                "c:/Users/usuario/Nextcloud/PlatformIO/Projects/sensores MQTT/receptor RYRL988/.pio/libdeps/sensoresMQTT/Adafruit GFX Library",
+                "c:/Users/usuario/Nextcloud/PlatformIO/Projects/sensores MQTT/receptor RYRL988/.pio/libdeps/sensoresMQTT/Adafruit BusIO",
                 "C:/Users/usuario/.platformio/packages/framework-arduinoespressif32/libraries/SPI/src",
                 "C:/Users/usuario/.platformio/packages/framework-arduinoespressif32/libraries/Wire/src",
                 "C:/Users/usuario/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/include/newlib/platform_include",
@@ -241,11 +241,11 @@
             "browse": {
                 "limitSymbolsToIncludedHeaders": true,
                 "path": [
-                    "c:/Users/usuario/Nextcloud/PlatformIO/Projects/esp32/reyax RYRL988/include",
-                    "c:/Users/usuario/Nextcloud/PlatformIO/Projects/esp32/reyax RYRL988/src",
-                    "c:/Users/usuario/Nextcloud/PlatformIO/Projects/esp32/reyax RYRL988/.pio/libdeps/esp32dev/Adafruit SSD1306",
-                    "c:/Users/usuario/Nextcloud/PlatformIO/Projects/esp32/reyax RYRL988/.pio/libdeps/esp32dev/Adafruit GFX Library",
-                    "c:/Users/usuario/Nextcloud/PlatformIO/Projects/esp32/reyax RYRL988/.pio/libdeps/esp32dev/Adafruit BusIO",
+                    "c:/Users/usuario/Nextcloud/PlatformIO/Projects/sensores MQTT/receptor RYRL988/include",
+                    "c:/Users/usuario/Nextcloud/PlatformIO/Projects/sensores MQTT/receptor RYRL988/src",
+                    "c:/Users/usuario/Nextcloud/PlatformIO/Projects/sensores MQTT/receptor RYRL988/.pio/libdeps/sensoresMQTT/Adafruit SSD1306",
+                    "c:/Users/usuario/Nextcloud/PlatformIO/Projects/sensores MQTT/receptor RYRL988/.pio/libdeps/sensoresMQTT/Adafruit GFX Library",
+                    "c:/Users/usuario/Nextcloud/PlatformIO/Projects/sensores MQTT/receptor RYRL988/.pio/libdeps/sensoresMQTT/Adafruit BusIO",
                     "C:/Users/usuario/.platformio/packages/framework-arduinoespressif32/libraries/SPI/src",
                     "C:/Users/usuario/.platformio/packages/framework-arduinoespressif32/libraries/Wire/src",
                     "C:/Users/usuario/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/include/newlib/platform_include",

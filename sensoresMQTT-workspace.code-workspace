@@ -1,0 +1,14 @@
+{
+	"folders": [
+		{
+			"path": "estacion"
+		},
+		{
+			"path": "receptor RYRL988"
+		},
+		{
+			"path": "lora_serial"
+		}
+	],
+	"settings": {}
+}
