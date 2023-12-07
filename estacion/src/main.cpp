@@ -98,7 +98,7 @@ void setup()
   WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, 0); 
   //bajamos la frecuencia de la cpu (por defecto 240Mhz)
   bool changeFreq = setCpuFrequencyMhz(80);
-  delay(50);
+  // delay(50);
   if(changeFreq) {
     Serial.printf("\nfreq actual   CPU: %u\n", getCpuFrequencyMhz());
   } else Serial.println("error en setCpuFrecuencyMhz()");
@@ -250,7 +250,7 @@ void setup()
   //activamos el wifi y enviamos los datos por mqtt
   // if(esp_wifi_start() == ESP_OK) Serial.println("wifi restablecido");
   //Wifi_control();
-  Serial.printf("Tiempo conexión wifi: %u ms\n", millis() - lastTime);
+  // Serial.printf("Tiempo conexión wifi: %u ms\n", millis() - lastTime);
   lora_send("AT+MODE=0"); // modo transceiver lora
   lora_send_cpin();
   lora_send_data(); //no usamos wifi
@@ -424,42 +424,45 @@ bool lora_send_cpin() {
   return true;
 }
 // envio datos sensores
+// AT+SEND=<dir.receptor>,<long.mensaje>,<mensaje>
+// TP:temperatura,HM:humedad,CO:CO2,PR:presion,TV:TVOC,VB:bateria
 void lora_send_data() {
   char buffer[100];
 
   String lora_msg = "AT+SEND=";
-  snprintf(buffer, sizeof(buffer),"%u,", reyax_RECEIVER);
+  snprintf(buffer, sizeof(buffer),"%u", reyax_RECEIVER);
   lora_msg.concat(buffer);
   //añadimos datos de los sensores
-  snprintf(buffer, sizeof(buffer), "ID%s",config.ID);
-  String payload = buffer;
+  // snprintf(buffer, sizeof(buffer), "ID%s",config.ID);
+  // String payload = buffer;
+  String payload = "";
   if(BME280_inst) {
     char str_hum[10], str_temp[10], str_press[10];
     dtostrf(bme_hum, 6, 2, str_hum);    
     dtostrf(bme_temp, 6, 2, str_temp);
     dtostrf(bme_press, 8, 2, str_press);
-    snprintf(buffer,  sizeof(buffer), ",TP%s,HM%s,PR%s", str_temp, str_hum, str_press);
+    snprintf(buffer,  sizeof(buffer), ":TP%s:HM%s:PR%s", str_temp, str_hum, str_press);
     payload.concat(buffer);
   }
   if(SGP30_inst) {
-    snprintf(buffer, sizeof(buffer), ",CO2%u,TV%u", CO2, TVOC);
+    snprintf(buffer, sizeof(buffer), ":CO%u:TV%u", CO2, TVOC);
     payload.concat(buffer);
   }
   //datos falsos de SGP30
-  // snprintf(buffer, sizeof(buffer), ",CO2%u,TV%u", 2133, 23566);
+  // snprintf(buffer, sizeof(buffer), ":CO%u:TV%u", 2133, 23566);
   // payload.concat(buffer);
-
   char str_vbat[10];
   dtostrf(read_vin(), 4, 2, str_vbat);
-  snprintf(buffer,  sizeof(buffer), ",VB%s", str_vbat);
+  snprintf(buffer,  sizeof(buffer), ":VB%s", str_vbat);
   payload.concat(buffer);
   payload.replace(" ",""); //quitamos los espacios
-  //payload.replace(",",":");
+  payload.remove(0,1); //eliminamos los primeros ':'
   uint16_t payload_length = payload.length();
-  snprintf(buffer, sizeof(buffer), "%u,", payload_length);
+  snprintf(buffer, sizeof(buffer), ",%u,", payload_length);
   lora_msg.concat(buffer);
   lora_msg.concat(payload);
   lora_msg.replace(" ","");
+  //enviamos los datos
   lora_send(lora_msg.c_str());
 }
 

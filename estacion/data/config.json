@@ -1,5 +1,5 @@
 {
-    "ID": "STA-004",
+    "ID": "STA-002",
     "MQTT_HOST": "barebone",
     "MQTT_PORT": "1883",
     "SEC_SLEEP": 20

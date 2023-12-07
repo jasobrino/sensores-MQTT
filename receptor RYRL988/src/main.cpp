@@ -1,11 +1,16 @@
 #include <Arduino.h>
 #include "soc/soc.h" 
 #include "soc/rtc_cntl_reg.h"
-#include <HardwareSerial.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
+#include <LittleFS.h>
+#include <ArduinoJson.h>
+#include <WiFi.h>
+#include <WiFiManager.h>
+#include <PubSubClient.h>
 #include "env.h"
 
+#define uS_TO_S_FACTOR 1000000ULL
 #define reyaxRX GPIO_NUM_16 //uart2 esp32
 #define reyaxTX GPIO_NUM_17 
 #define reyax_RST GPIO_NUM_4 // pin reset del reyax
@@ -16,6 +21,7 @@ Adafruit_SSD1306 display = Adafruit_SSD1306(128, 32, &Wire, -1);
 HardwareSerial lora(2);
 bool loraReceivedOk = false;
 String loraReceivedString = "";
+String json_payload;
 
 char message[260];
 struct st_msg {
@@ -26,9 +32,28 @@ struct st_msg {
   int16_t snr;
 } msg;
 
+//valores de configuración
+struct Config {
+  char MQTT_HOST[40];
+  uint16_t MQTT_PORT;
+  char ID[20];
+  uint16_t SEC_SLEEP;
+} config;
+
+//objetos wifi
+WiFiClient wclient;
+PubSubClient mqttClient(wclient);
+WiFiManager wifiManager;
+
+// contador recepcion
 uint16_t counter = 0;
-char literal[]="+RCV=100,4,0123,-5,12";
+
+// declaración funciones
 void show_lcd();
+void Wifi_control();
+void get_config();
+// void save_config();
+void sendMqtt();
 void load_msg(char *ms);
 void lora_send(String message);
 void lora_receive_callback();
@@ -41,8 +66,9 @@ void setup() {
   //para desactivar el pin de reset de reyax
   gpio_set_pull_mode(reyax_RST, GPIO_PULLUP_ONLY);
   gpio_sleep_set_pull_mode(reyax_RST, GPIO_PULLUP_ONLY);
-
   Serial.begin(115200);
+  //capturamos la configuración guardada en LittleFS
+  get_config(); 
   // load_msg(literal);
   if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
     Serial.println(F("error en display.begin()"));
@@ -61,6 +87,9 @@ void setup() {
   if(lora_send_cpin()) {
     Serial.println("CPIN enviado correctamente a modulo lora.");
   }
+  uint64_t lastTime = millis();
+  Wifi_control();
+  Serial.printf("Tiempo conexión wifi: %u ms\n", millis() - lastTime);
   Serial.println("Entrando en loop...");
 }
 
@@ -70,14 +99,13 @@ void loop() {
     counter++;
     loraReceivedOk = false;
     uint16_t numbytes = loraReceivedString.length();
-    //uint16_t numbytes = lora.readBytes(message, 260);
-    // los mensajes terminan con CR+LF, terminamos la cadena eliminando el caracter final
-    // message[numbytes - 1] = 0;
     strncpy(message, loraReceivedString.c_str(), sizeof(message));
     Serial.printf("recibido: %06u - %u: [%s]\n", counter, numbytes, message);
     // comprobamos que el mensaje recibido no es un error
     if( loraReceivedString.startsWith("+RCV") ) {
       load_msg(message); 
+      //envio de datos por MQTT
+      sendMqtt();
     } else {
       strcpy( msg.payload,message);
     }
@@ -129,7 +157,23 @@ void load_msg(char *ms) {
   msg.snr = atoi(strPos);
   Serial.printf("addr: %u, len:%u, msg:%s, rssi: %d, snr: %d\n",
           msg.tr_addr,msg.payload_len,msg.payload,msg.rssi,msg.snr);
-
+  //analizamos el payload
+  json_payload = "{\"ID\":";
+  json_payload.concat(msg.tr_addr); //identificador address mod lora = estacion
+  json_payload.concat(",");
+  String str_payload = String(msg.payload);
+  str_payload.replace(":",",");
+  str_payload.replace("TP","\"temp\":");
+  str_payload.replace("HM","\"humedad\":");
+  str_payload.replace("PR","\"presion\":");
+  str_payload.replace("CO","\"co2\":");
+  str_payload.replace("TV","\"tvoc\":");
+  str_payload.replace("VB","\"vbat\":");
+  json_payload.concat(str_payload);
+  json_payload.concat(",\"rssi\":");
+  json_payload.concat(msg.rssi);
+  json_payload.concat("}");
+  Serial.println(json_payload);
 }
 
 //mostrar información en el lcd
@@ -145,6 +189,70 @@ void show_lcd() {
   display.printf("cnt:%6d", counter);
   // display.printf("lp:%07u V:%.2f");
   display.display();
+}
+
+//activar la conexión wifi y proceder a enviar los datos
+void Wifi_control() {
+  WiFi.mode(WIFI_STA); //modo station por defecto
+  //wifiManager.resetSettings(); //reinicia la config wifi
+  //Realizamos la conexión wifi mediante wifiManager
+  //si no lo consigue, creará un AP en 192.168.4.1 para su configuracion
+  wifiManager.setConfigPortalTimeout(180); //tiempo espera AP en seg
+  wifiManager.setConnectTimeout(60); //tiempo max conexion a router
+  // wifiManager.resetSettings(); //borra las credenciales wifi
+  //añadimos campo para captura de tiempo
+  // wifiManager.addParameter(&wmpar_sec_sleep);
+  // wifiManager.setSaveConfigCallback(wmSaveConfigCallback);
+  //publicamos el SSID con el nombre del dispositivo
+  Serial.printf("wifiManager(%s) conectando wifi", config.ID);
+  wifiManager.autoConnect(config.ID,"superraton");
+  //wifiManager.startConfigPortal("wifiManager");
+}
+
+// envio de datos al broker MQTT
+void sendMqtt() {
+  mqttClient.setServer(config.MQTT_HOST, config.MQTT_PORT);
+  if(mqttClient.connect(config.ID)) {
+    Serial.println("conectado a MQTT");
+    mqttClient.publish("sensor/values", json_payload.c_str());
+    mqttClient.disconnect();
+    mqttClient.flush();
+    // esperamos hasta que la conexión se cierre completamente
+    while(mqttClient.state() != -1) {
+      delay(10);
+    }
+  } else {
+    Serial.print("MQTT error de conexion:");
+    Serial.println(mqttClient.state());
+  }
+}
+
+//leemos los valores del archivo de config.json
+void get_config() {
+  //montamos el sistema de archivos
+  const char* fconf = "/config.json";
+  if(!LittleFS.begin(false)) {
+    Serial.println("fallo al montar LittleFS");
+  } else {
+    if( LittleFS.exists(fconf)) {
+      File f = LittleFS.open(fconf);
+      StaticJsonDocument<200> doc;
+      DeserializationError error = deserializeJson(doc, f);
+      if (error) {
+        Serial.println(F("JsonDocument: error al leer el archivo"));
+      } else {
+        //leemos las variables de configuración
+        strlcpy(config.MQTT_HOST, doc["MQTT_HOST"] | "linux-mqtt", sizeof(config.MQTT_HOST));
+        strlcpy(config.ID, doc["ID"] | "NO_ID", sizeof(config.ID));
+        config.MQTT_PORT = doc["MQTT_PORT"] | 1883;
+        Serial.println("leido fichero de configuración:");
+        Serial.printf("ID:%s, host:%s, port:%d, sleep: %d\n",config.ID, config.MQTT_HOST, config.MQTT_PORT, config.SEC_SLEEP);
+      }
+      f.close();
+    } else {
+      Serial.printf("no se ha encontrado el archivo %s\n", fconf);
+    } 
+  }
 }
 
 /* // envio de comandos a modulo lora
