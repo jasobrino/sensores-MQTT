@@ -1,13 +1,24 @@
 {
 	"folders": [
 		{
-			"path": "estacion"
+			"name": "test_emisor",
+			"path": "test_emisor"
 		},
 		{
+			"name": "documentos",
+			"path": "documentos"
+		},
+		{
+			"name": "receptor RYRL988",
 			"path": "receptor RYRL988"
 		},
 		{
-			"path": "lora_serial"
+			"name": "modulos lora",
+			"path": "modulos lora"
+		},
+		{
+			"name": "estacion",
+			"path": "estacion"
 		}
 	],
 	"settings": {
