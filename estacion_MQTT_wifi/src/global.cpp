@@ -16,5 +16,5 @@ ESP32Time rtc;
 bool jumper_stat = false;
 bool httpServer = false;
 String flogname;
-String SSID = "ASUSMAX";
-String PASSWD = "elprimodemartos";
+String SSID = "****";
+String PASSWD = "****";
