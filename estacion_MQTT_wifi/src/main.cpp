@@ -6,50 +6,90 @@
 #include "wifiFunc.h"
 #include "sensorSGP30.h"
 #include "sensorBME280.h"
+#include "httpFlashServer.h"
 
 uint32_t lastTime = 0;
-
 // declaración funciones
 void inicializacion();
+void sendDataSensors();
 
-void setup()
-{
+void setup() {
   //preparamos entorno
   inicializacion();
-  // control motivo wakeup
-  wakeup_cause = esp_sleep_get_wakeup_cause();
-  switch(wakeup_cause) {
-    //entrada por timer
-    case ESP_SLEEP_WAKEUP_TIMER:
-      Serial.println("wakeup causado por TIMER");
-      break;
-    //al arrancar o hacer reset se entra en default
-    default: 
-      Serial.println("wakeup no causado por deep sleep");
-      display.setTextColor(WHITE);
-      display.setTextSize(1);
-      display.clearDisplay();
-      display.setCursor(0,0);
-      display.printf("%s RESTART", config.ID);
-      if(SGP30_inst) {
-        //ahora asignamos los valores de baseline guardados
-        set_baseline_values();
-        //no se han podido abrir los archivos de baseline
-        if(SGP30_calibration) {
-          //ahora debemos calcular los valores de baseline del SGP30
-          // los primeros 10 minutos en el exterior, el proceso tarda 12 horas
-          SGP30Calibration();
-          Serial.println("calculando baseline (12h)");
+  //sin no hay jumper, comprobar si existe fichero log
+  if(!jumper_stat && fileExists(flogname)) {
+    //ahora debemos arrancar el servidor web
+    httpServer = true;
+    Wifi_control(); //conexión a router
+    Serial.println("arrancando servidor web...");
+    startServer();
+    IPAddress ip = WiFi.localIP();
+    Serial.printf("\nconectado a wifi: %d.%d.%d.%d\n", ip[0],ip[1],ip[2],ip[3]);
+    display.setTextColor(WHITE);
+    display.setTextSize(1);
+    display.clearDisplay();
+    display.setCursor(0,0);
+    display.printf("%s HTTP server", config.ID);
+    display.setCursor(0,10);
+    display.printf("HTTP: %d.%d.%d.%d", ip[0],ip[1],ip[2],ip[3]);
+    display.display();
+  } else {
+    // control motivo wakeup
+    wakeup_cause = esp_sleep_get_wakeup_cause();
+    switch(wakeup_cause) {
+      //entrada por timer
+      case ESP_SLEEP_WAKEUP_TIMER:
+        Serial.println("wakeup causado por TIMER");
+        break;
+      //al arrancar o hacer reset se entra en default
+      default: 
+        Serial.println("wakeup no causado por deep sleep");
+        display.setTextColor(WHITE);
+        display.setTextSize(1);
+        display.clearDisplay();
+        display.setCursor(0,0);
+        display.printf("%s RESTART", config.ID);
+      
+        // en este punto, la estación comienza a recopilar los datos
+        Serial.println("leyendo datos de los sensores...");
+        if(SGP30_inst) {
+          //ahora asignamos los valores de baseline guardados
+          set_baseline_values();
+          //no se han podido abrir los archivos de baseline
+          if(SGP30_calibration) {
+            //ahora debemos calcular los valores de baseline del SGP30
+            // los primeros 10 minutos en el exterior, el proceso tarda 12 horas
+            Serial.println("calculando baseline (12h)");
+            SGP30Calibration();
+          }
+          //mostramos valores
+          String now = rtc.getTime("%02d/%02m/%Y %02H:%02M:%02S");
+          display.setCursor(0,10);
+          display.printf("CO2:%u TV:%u", eCO2_base, TVOC_base);
+          display.setCursor(0,20);
+          display.printf(now.c_str());
+          display.display();
         }
-        //mostramos valores
-        display.setCursor(0,10);
-        display.printf("eCO2: %u", eCO2_base);
-        display.setCursor(0,20);
-        display.printf("TVOC: %u", TVOC_base);
-        display.display();
-      }
+    }
+    // se procede a capturar datos y enviarlos
+    sendDataSensors();
+    // pasamos a modo deep sleep
+    Serial.flush();
+    if(lcd_inst) display.ssd1306_command(SSD1306_DISPLAYOFF); //apagar lcd
+    Serial.println("**** deep_sleep ****\n");
+    esp_deep_sleep_start();
+  } 
+}
+
+void loop() {
+  //comprobamos si el servidor web está en funcionamiento
+  if(httpServer) {
+      // server.handleClient();
+      serverHandleClient();
   }
-  // se procede a capturar datos y enviarlos
+}
+
+void sendDataSensors() {
   if(SGP30_inst) {
     if(!SGP30_read_values()) {
       Serial.printf("error en SGP30_read_values");
@@ -67,19 +107,25 @@ void setup()
 
   if(SGP30_inst) spg30_sleep(); //apagamos el SGP30 (soft reset)
   if(BME280_inst) bme_sleep(); //reducimos el consumo del BME280
-  //activamos el wifi y enviamos los datos por mqtt
-  // if(esp_wifi_start() == ESP_OK) Serial.println("wifi restablecido");
-  Wifi_control();
-  // delay(5000); //para medir consumo
-  Serial.printf("Tiempo conexión wifi: %u ms\n", millis() - lastTime);
-  // pasamos a modo deep sleep
-  Serial.flush();
-  if(lcd_inst) display.ssd1306_command(SSD1306_DISPLAYOFF); //apagar lcd
-  Serial.println("**** deep_sleep ****\n");
-  esp_deep_sleep_start();
-} 
-
-void loop() {}
+  
+  //según la posición del jumper, se guardan datos en la flash o se envían por wifi
+  char payload[200];
+  if(jumper_stat) {
+    // modo de datos locales
+    preparePayload(payload, 0); //cargamos el payload con los datos
+    Serial.printf("(datos locales) payload: %s\n", payload);
+    saveDatalog(payload);
+  } else {
+    //activamos el wifi y enviamos los datos por mqtt
+    // if(esp_wifi_start() == ESP_OK) Serial.println("wifi restablecido");
+    Wifi_control();
+    setNTPTime(); //ajustamos primero fecha y hora con el servidor NTP
+    preparePayload(payload, WiFi.RSSI()); //cargamos el payload con los datos
+    sendMqtt(payload);
+    // delay(5000); //para medir consumo
+    Serial.printf("Tiempo conexión wifi: %u ms\n", millis() - lastTime);
+  }
+}
 
 // configuramos puertos e inicalizamos sensores
 void inicializacion() {
@@ -87,9 +133,14 @@ void inicializacion() {
   Serial.begin(115200);
   Serial.println("\n-----------------------------------------------");
   pinMode(PIN_LED, OUTPUT);
+  pinMode(PIN_JMP_IN, INPUT_PULLDOWN); // entrada LOW con jumper abierto
+  pinMode(PIN_JMP_OUT,OUTPUT);
 
   //ESP32 - desactiva brownout detector
   WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, 0); 
+  //ajuste timezone Europe/Madrid
+  setenv("TZ", "CET-1CEST,M3.5.0,M10.5.0/3", 1);
+  tzset();
   // WiFi.mode(WIFI_STA); //modo station por defecto
   //bajamos la frecuencia de la cpu
   bool changeFreq = setCpuFrequencyMhz(80);
@@ -98,7 +149,7 @@ void inicializacion() {
   if(changeFreq) {
     Serial.printf("\nfreq actual   CPU: %u\n", getCpuFrequencyMhz());
   } else Serial.println("error en setCpuFrecuencyMhz()");
-  //descativar wifi
+  //desactivar wifi
    Wifi_setSleep();
   // if(esp_wifi_stop() == ESP_OK) Serial.println("wifi_stop ok");
   //capturamos la configuración guardada en LittleFS
@@ -134,5 +185,15 @@ void inicializacion() {
       Serial.printf("Humedad absoluta: %u\n", ABS_Humidity);
     }
   }
-
+  //nombre fichero de log en flash
+  flogname = "/";
+  flogname.concat(config.ID);
+  flogname.concat(".json");
+  Serial.printf("nombre fichero log flash: %s\n", flogname.c_str());
+  //comprobamos el jumper
+  digitalWrite(PIN_JMP_OUT, HIGH);
+  jumper_stat = digitalRead(PIN_JMP_IN) == HIGH;
+  digitalWrite(PIN_JMP_OUT, LOW);
+  Serial.printf("Jumper status: %s\n", jumper_stat ? "CLOSE" : "OPEN");
+  httpServer = false; //por defecto apagado
 }

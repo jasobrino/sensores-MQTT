@@ -6,5 +6,7 @@
 
 void get_config();
 void save_config();
+void saveDatalog(char* payload);
+bool fileExists(String file);
 
 #endif

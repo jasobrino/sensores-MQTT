@@ -50,3 +50,25 @@ void save_config() {
     conf.close();
   }
 }
+
+//guardar información en datalog
+void saveDatalog(char* payload) {
+    if(!LittleFS.begin(false)) {
+      Serial.println("fallo al montar LittleFS");
+    } else {
+      File log = LittleFS.open(flogname.c_str(), FILE_APPEND);
+      if(!log) {
+        Serial.printf("error apertura archivo %s\n", flogname);
+      } else {
+        log.printf("%s\n", payload);
+        log.close();
+      }
+    }
+}
+
+bool fileExists(String file) {
+  if(LittleFS.begin(false)) {
+    return LittleFS.exists(file);
+  }
+  return false;
+}

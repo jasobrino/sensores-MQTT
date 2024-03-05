@@ -25,7 +25,7 @@ void Wifi_control() {
   wifiManager.autoConnect(config.ID,"superraton");
   //wifiManager.startConfigPortal("wifiManager");
   // enviamos los datos por MQTT
-  sendMqtt();
+  //sendMqtt(payload);
 }
 
 //funcion callback despues de entrar en WifiManager
@@ -38,28 +38,7 @@ void wmSaveConfigCallback() {
   save_config(); //guardamos la configuracion en config.json
 }
 
-void sendMqtt() {
-  char payload[200];
-  char buffer[100];
-
-  snprintf(payload, sizeof(payload), "{ \"ID\": \"%s\"", config.ID);
-  //añadimos datos de los sensores
-  if(BME280_inst) {
-    char str_hum[10], str_temp[10], str_press[10];
-    dtostrf(bme_hum, 6, 2, str_hum);    
-    dtostrf(bme_temp, 6, 2, str_temp);
-    dtostrf(bme_press, 8, 2, str_press);
-    snprintf(buffer,  sizeof(buffer), ", \"TEMP\": %s, \"HUMEDAD\": %s, \"PRESION\": %s", str_temp, str_hum, str_press);
-    strcat(payload, buffer);
-  }
-  if(SGP30_inst) {
-    snprintf(buffer, sizeof(buffer), ", \"eCO2\": %u, \"TVOC\": %u", CO2, TVOC);
-    strcat(payload, buffer);
-  }
-  char str_vbat[10];
-  dtostrf(read_vin(), 4, 2, str_vbat);
-  snprintf(buffer,  sizeof(buffer), ", \"VBAT\": %s, \"RSSI\": %d }", str_vbat, WiFi.RSSI());
-  strcat(payload, buffer);
+void sendMqtt(char* payload) {
   Serial.printf("payload:%s\n", payload);
   //enviamos los datos al broker mqtt
   mqttClient.setServer(config.MQTT_HOST, config.MQTT_PORT);

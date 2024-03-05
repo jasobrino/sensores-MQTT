@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>estacion.md</title>
+<meta http-equiv="Content-type" content="text/html;charset=UTF-8">
+
+<style>
+/* https://github.com/microsoft/vscode/blob/master/extensions/markdown-language-features/media/markdown.css */
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
+body {
+	font-family: var(--vscode-markdown-font-family, -apple-system, BlinkMacSystemFont, "Segoe WPC", "Segoe UI", "Ubuntu", "Droid Sans", sans-serif);
+	font-size: var(--vscode-markdown-font-size, 14px);
+	padding: 0 26px;
+	line-height: var(--vscode-markdown-line-height, 22px);
+	word-wrap: break-word;
+}
+
+#code-csp-warning {
+	position: fixed;
+	top: 0;
+	right: 0;
+	color: white;
+	margin: 16px;
+	text-align: center;
+	font-size: 12px;
+	font-family: sans-serif;
+	background-color:#444444;
+	cursor: pointer;
+	padding: 6px;
+	box-shadow: 1px 1px 1px rgba(0,0,0,.25);
+}
+
+#code-csp-warning:hover {
+	text-decoration: none;
+	background-color:#007acc;
+	box-shadow: 2px 2px 2px rgba(0,0,0,.25);
+}
+
+body.scrollBeyondLastLine {
+	margin-bottom: calc(100vh - 22px);
+}
+
+body.showEditorSelection .code-line {
+	position: relative;
+}
+
+body.showEditorSelection .code-active-line:before,
+body.showEditorSelection .code-line:hover:before {
+	content: "";
+	display: block;
+	position: absolute;
+	top: 0;
+	left: -12px;
+	height: 100%;
+}
+
+body.showEditorSelection li.code-active-line:before,
+body.showEditorSelection li.code-line:hover:before {
+	left: -30px;
+}
+
+.vscode-light.showEditorSelection .code-active-line:before {
+	border-left: 3px solid rgba(0, 0, 0, 0.15);
+}
+
+.vscode-light.showEditorSelection .code-line:hover:before {
+	border-left: 3px solid rgba(0, 0, 0, 0.40);
+}
+
+.vscode-light.showEditorSelection .code-line .code-line:hover:before {
+	border-left: none;
+}
+
+.vscode-dark.showEditorSelection .code-active-line:before {
+	border-left: 3px solid rgba(255, 255, 255, 0.4);
+}
+
+.vscode-dark.showEditorSelection .code-line:hover:before {
+	border-left: 3px solid rgba(255, 255, 255, 0.60);
+}
+
+.vscode-dark.showEditorSelection .code-line .code-line:hover:before {
+	border-left: none;
+}
+
+.vscode-high-contrast.showEditorSelection .code-active-line:before {
+	border-left: 3px solid rgba(255, 160, 0, 0.7);
+}
+
+.vscode-high-contrast.showEditorSelection .code-line:hover:before {
+	border-left: 3px solid rgba(255, 160, 0, 1);
+}
+
+.vscode-high-contrast.showEditorSelection .code-line .code-line:hover:before {
+	border-left: none;
+}
+
+img {
+	max-width: 100%;
+	max-height: 100%;
+}
+
+a {
+	text-decoration: none;
+}
+
+a:hover {
+	text-decoration: underline;
+}
+
+a:focus,
+input:focus,
+select:focus,
+textarea:focus {
+	outline: 1px solid -webkit-focus-ring-color;
+	outline-offset: -1px;
+}
+
+hr {
+	border: 0;
+	height: 2px;
+	border-bottom: 2px solid;
+}
+
+h1 {
+	padding-bottom: 0.3em;
+	line-height: 1.2;
+	border-bottom-width: 1px;
+	border-bottom-style: solid;
+}
+
+h1, h2, h3 {
+	font-weight: normal;
+}
+
+table {
+	border-collapse: collapse;
+}
+
+table > thead > tr > th {
+	text-align: left;
+	border-bottom: 1px solid;
+}
+
+table > thead > tr > th,
+table > thead > tr > td,
+table > tbody > tr > th,
+table > tbody > tr > td {
+	padding: 5px 10px;
+}
+
+table > tbody > tr + tr > td {
+	border-top: 1px solid;
+}
+
+blockquote {
+	margin: 0 7px 0 5px;
+	padding: 0 16px 0 10px;
+	border-left-width: 5px;
+	border-left-style: solid;
+}
+
+code {
+	font-family: Menlo, Monaco, Consolas, "Droid Sans Mono", "Courier New", monospace, "Droid Sans Fallback";
+	font-size: 1em;
+	line-height: 1.357em;
+}
+
+body.wordWrap pre {
+	white-space: pre-wrap;
+}
+
+pre:not(.hljs),
+pre.hljs code > div {
+	padding: 16px;
+	border-radius: 3px;
+	overflow: auto;
+}
+
+pre code {
+	color: var(--vscode-editor-foreground);
+	tab-size: 4;
+}
+
+/** Theming */
+
+.vscode-light pre {
+	background-color: rgba(220, 220, 220, 0.4);
+}
+
+.vscode-dark pre {
+	background-color: rgba(10, 10, 10, 0.4);
+}
+
+.vscode-high-contrast pre {
+	background-color: rgb(0, 0, 0);
+}
+
+.vscode-high-contrast h1 {
+	border-color: rgb(0, 0, 0);
+}
+
+.vscode-light table > thead > tr > th {
+	border-color: rgba(0, 0, 0, 0.69);
+}
+
+.vscode-dark table > thead > tr > th {
+	border-color: rgba(255, 255, 255, 0.69);
+}
+
+.vscode-light h1,
+.vscode-light hr,
+.vscode-light table > tbody > tr + tr > td {
+	border-color: rgba(0, 0, 0, 0.18);
+}
+
+.vscode-dark h1,
+.vscode-dark hr,
+.vscode-dark table > tbody > tr + tr > td {
+	border-color: rgba(255, 255, 255, 0.18);
+}
+
+</style>
+
+<style>
+/* Tomorrow Theme */
+/* http://jmblog.github.com/color-themes-for-google-code-highlightjs */
+/* Original theme - https://github.com/chriskempson/tomorrow-theme */
+
+/* Tomorrow Comment */
+.hljs-comment,
+.hljs-quote {
+	color: #8e908c;
+}
+
+/* Tomorrow Red */
+.hljs-variable,
+.hljs-template-variable,
+.hljs-tag,
+.hljs-name,
+.hljs-selector-id,
+.hljs-selector-class,
+.hljs-regexp,
+.hljs-deletion {
+	color: #c82829;
+}
+
+/* Tomorrow Orange */
+.hljs-number,
+.hljs-built_in,
+.hljs-builtin-name,
+.hljs-literal,
+.hljs-type,
+.hljs-params,
+.hljs-meta,
+.hljs-link {
+	color: #f5871f;
+}
+
+/* Tomorrow Yellow */
+.hljs-attribute {
+	color: #eab700;
+}
+
+/* Tomorrow Green */
+.hljs-string,
+.hljs-symbol,
+.hljs-bullet,
+.hljs-addition {
+	color: #718c00;
+}
+
+/* Tomorrow Blue */
+.hljs-title,
+.hljs-section {
+	color: #4271ae;
+}
+
+/* Tomorrow Purple */
+.hljs-keyword,
+.hljs-selector-tag {
+	color: #8959a8;
+}
+
+.hljs {
+	display: block;
+	overflow-x: auto;
+	color: #4d4d4c;
+	padding: 0.5em;
+}
+
+.hljs-emphasis {
+	font-style: italic;
+}
+
+.hljs-strong {
+	font-weight: bold;
+}
+</style>
+
+<style>
+/*
+ * Markdown PDF CSS
+ */
+
+ body {
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe WPC", "Segoe UI", "Ubuntu", "Droid Sans", sans-serif, "Meiryo";
+	padding: 0 12px;
+}
+
+pre {
+	background-color: #f8f8f8;
+	border: 1px solid #cccccc;
+	border-radius: 3px;
+	overflow-x: auto;
+	white-space: pre-wrap;
+	overflow-wrap: break-word;
+}
+
+pre:not(.hljs) {
+	padding: 23px;
+	line-height: 19px;
+}
+
+blockquote {
+	background: rgba(127, 127, 127, 0.1);
+	border-color: rgba(0, 122, 204, 0.5);
+}
+
+.emoji {
+	height: 1.4em;
+}
+
+code {
+	font-size: 14px;
+	line-height: 19px;
+}
+
+/* for inline code */
+:not(pre):not(.hljs) > code {
+	color: #C9AE75; /* Change the old color so it seems less like an error */
+	font-size: inherit;
+}
+
+/* Page Break : use <div class="page"/> to insert page break
+-------------------------------------------------------- */
+.page {
+	page-break-after: always;
+}
+
+</style>
+
+<script src="https://unpkg.com/mermaid/dist/mermaid.min.js"></script>
+</head>
+<body>
+  <script>
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: document.body.classList.contains('vscode-dark') || document.body.classList.contains('vscode-high-contrast')
+          ? 'dark'
+          : 'default'
+    });
+  </script>
+<h2 id="estacion-captura-de-datos">ESTACION CAPTURA DE DATOS</h2>
+<ul>
+<li><strong>¿en que consiste una estación?</strong></li>
+</ul>
+<pre>Una estación de captura de datos consiste en un circuito electrónico gobernado por un microcontrolador ESP32, al que se le pueden añadir distintos sensores, que se comunican con el micro mediante bus I2C.
+</pre>
+<ul>
+<li><strong>características microcontrolador ESP32</strong></li>
+</ul>
+<pre>El microcontrolador usado en el proyecto es el modelo ESP32 WROOM de la empresa Espressif, con las siguientes características:
+
+ - CPU dual core 32 bits que puede trabajar hasta los 240Mhz
+ - Alimentación entre 3.0V y 3.6V
+ - Memoria SRAM de 520KB
+ - Memoria flash externa de 4MB
+ - Interfaz de comunicación UART, SPI, I2C, PWM, ADC, DAC
+ - 32 puertos GPIO programables
+ - Conexión Wi-Fi (2.4Ghz) y Bluetooth (V4.2)
+</pre>
+<p><img src="./ESP32Pinout.png" alt="esp32"></p>
+<h3 id="esquema-electr%C3%B3nico">Esquema electrónico</h3>
+<pre>Cada estación se corresponde con el siguiente esquema:</pre>
+<p><img src="./esquema_estacion.png" alt="esquema"></p>
+<h3 id="circuito-impreso">Circuito impreso</h3>
+<pre>En base al esquema del punto anterior, se ha procedido al diseño de una placa de circuito impreso de doble cara, para facilitar su fabricación y permitir de una manera sencilla ajustar el contenido en una caja, con los sensores y la batería de litio: 
+</pre>
+<p><img src="./pcb.png" alt="pcb"></p>
+<h3 id="funcionamiento-de-una-estaci%C3%B3n">Funcionamiento de una estación</h3>
+<pre>Cada estación permite varios modos de funcionamiento, dependiendo de la situación de un jumper, contemplando los siguientes escenarios:
+</pre>
+<ul>
+<li><strong>Arranque de la estación con jumper cerrado:</strong></li>
+</ul>
+<pre> En este modo, la estación funciona capturando datos en modo local y almacenándolos en la memoria flash del ESP32, por lo que no requiere acceso al router.
+</pre>
+<ul>
+<li><strong>Arranque de la estación con jumper abierto (sin archivo de log):</strong></li>
+</ul>
+<pre>Cuando al iniciar la estación se detecta que el jumper está abierto, una vez capturada la información de los sensores, se procede a conectar por wifi al router, para enviar la información capturada a través del protocolo MQTT. 
+Para que la información pueda ser almacenada en B.D., es necesario que a su vez esté arrancado en el servidor la escucha de dicho protocolo, para poder así interceptar los datos de las estaciones y poder crear el nuevo registro.
+</pre>
+<ul>
+<li><strong>Arranque de la estación con jumper abierto (con archivo de log):</strong></li>
+</ul>
+<pre>Si se inicia la estación con el jumper abierto y se detecta que existe un fichero log guardado en la flash del micro, entonces la estación se conecta al router y después activa un servidor web, que permitirá la conexión desde el navegador introduciendo la IP del dispositivo, y desde allí se podrá operar con los archivos almacenados en la flash (descarga, borrado, subida de archivos y formateo de la partición de datos).
+</pre>
+<ul>
+<li><strong>Activación del modo de ahorro de energía</strong></li>
+</ul>
+<pre>Independientemente de que la captura de datos se produzca en modo local o por wifi, una vez enviada la información de los sensores, la estación pasa a modo de ahorro de energía durante un tiempo programado, en el cual la cpu pasa a modo de hibernación (DeepSleep) y se activa a su vez el modo ahorro de energía de los sensores instalados. Una vez finalizado el tiempo programado, la cpu automáticamente resetea la estación para iniciar el ciclo de nuevo. Este modo de funcionamiento es imprescindible para asegurar la autonomía de la batería, de esa manera una celda de litio 18650 de 3000 mA dispone de una autonomía de una aproximadamente una semana (con un tiempo de reinicio de unos 3 minutos).
+</pre>
+</body>
+</html>

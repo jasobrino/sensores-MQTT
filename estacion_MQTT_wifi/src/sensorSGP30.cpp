@@ -28,7 +28,7 @@ bool SGP30_read_values() {
 //recupera los valores eCO2 y TVOC almacenados, si no están pasamos a modo calibración
 void set_baseline_values() {
   if(LittleFS.exists("/TVOC") && LittleFS.exists("/eCO2")) {
-    f = LittleFS.open("/TVOC");
+    File f = LittleFS.open("/TVOC");
     TVOC_base = f.readString().toInt();
     f.close();
     f = LittleFS.open("/eCO2");
@@ -84,7 +84,7 @@ void SGP30Calibration() {
     Serial.printf("calibrando baseline: eCO2: %04X TVOC: %04X  - %u\n", eCO2_base, TVOC_base, i);
   }
   //guardamos los valores capturados en los archivos
-  f = LittleFS.open("/TVOC", "w");
+  File f = LittleFS.open("/TVOC", "w");
   f.print(String(TVOC_base));
   f.close();
   f = LittleFS.open("/eCO2", "w");
